@@ -10,8 +10,10 @@
 
 #define PORT 8080
 #define MAX 1024
-#define ADDRESS     "tcp://agtstech.us.cumulocity.com:1883"
+
+#define ADDRESS     "tcp://agtsdev.iotsolutionbuilder.ooredoo.qa:1883"
 #define CLIENTID    "my.mqtt.client"
+
 typedef unsigned int uint;
 FILE *fptr;
 
@@ -43,11 +45,8 @@ int on_message(void *context, char *topicName, int topicLen, MQTTClient_message 
 
 void func(int sockfd)
 {
-    uint buff[MAX];
-    unsigned int buffer[MAX], readvalue[MAX];
-    int valread,cmp;
+    unsigned int readvalue[MAX];
     float lati, longi;
-//  char* c8y_payload;
     int c8ylocationtemplate = 402;
 
     unsigned int login_response[] = {0x78780501, 0x00059FF8, 0x0D0A};
@@ -57,110 +56,104 @@ void func(int sockfd)
     unsigned int heartbeat_packet[] = {0x78780B23, 0xC0012204, 0x00010008, 0x18720D0A};
     unsigned int GPSlocation_packet[] = {0x78782222, 0x0F0C1D02, 0x3305C9, 0x027AC818, 0x0C465860, 0x00140001, 0xCC00287D, 0x001F7100, 0x00010008, 0x20860D0A};
 
-uint ibuff[MAX] = {'\0'};
-int i = 0, len = 0;
+    uint ibuff[MAX] = {'\0'};
+    int i = 0, len = 0;
 
-    for (;;) 
-	{
+    for (;;)
+    {
 
-        //bzero(buff, sizeof(buff));
-	memset (ibuff, '\0', sizeof(ibuff) );
+        memset (ibuff, '\0', sizeof(ibuff) );
 
         printf("\n\n\nClient SIde:\n\n");
         read(sockfd, &len, 4);
-	printf("Size at data recvd from server: %d\n", len);
-        valread = recv( sockfd, ibuff, MAX, 0);
+        printf("Size at data recvd from server: %d\n", len);
+        recv( sockfd, ibuff, MAX, 0);
 
-	for(i=0;i<len/4;i++)
-        	printf("From Server : 0x%x\n", ibuff[i]);
+        for(i=0; i<len/4; i++)
+            printf("From Server : 0x%x\n", ibuff[i]);
 
 
 //logic to send appropriate response
         if (memcmp(&login_packet[0], &ibuff[0], 1)==0)
         {
-                printf("Sending login response\n");
-        //    send(sockfd , login_response, sizeof(login_response), 0 );
-	len = sizeof(login_response);
-	send(sockfd, &len, 4, 0 );
-	send(sockfd, login_response, len, 0 );
+            printf("Sending login response\n");
+            //    send(sockfd , login_response, sizeof(login_response), 0 );
+            len = sizeof(login_response);
+            send(sockfd, &len, 4, 0 );
+            send(sockfd, login_response, len, 0 );
         }
 
         else if (memcmp(&heartbeat_packet[0], &ibuff[0], 1)==0)
         {
-            //strcpy(buff, heartbeat_response);
-            //send(sockfd , heartbeat_response, sizeof(heartbeat_response), 0 );
-                printf("Sending heartbeat response\n");
-	len = sizeof(heartbeat_response);	
-	send(sockfd, &len, 4, 0 );
-	send(sockfd, heartbeat_response, len, 0 );
+            printf("Sending heartbeat response\n");
+            len = sizeof(heartbeat_response);
+            send(sockfd, &len, 4, 0 );
+            send(sockfd, heartbeat_response, len, 0 );
         }
 
-	
-       else if (memcmp(&GPSlocation_packet[0], &ibuff[0], 1)==0)
+
+        else if (memcmp(&GPSlocation_packet[0], &ibuff[0], 1)==0)
         {
             printf("inside GPS if \n");
 
 
-           // write(fptr, buff, sizeof(buff), 1);
             fwrite(&ibuff, sizeof(ibuff), 1, fptr);
 
-               // Seek to the beginning of the file //
-                fseek(fptr, 0, SEEK_SET);
-               // Read and display data 
-                fread(readvalue, sizeof(ibuff), 1, fptr);
-                printf("data read from file is %u\n", readvalue[0]);
-                printf("data read from file is %u\n", readvalue[1]);
-                printf("data read from file is %u\n", readvalue[2]);
+            // Seek to the beginning of the file //
+            fseek(fptr, 0, SEEK_SET);
+            // Read and display data
+            fread(readvalue, sizeof(ibuff), 1, fptr);
 
-                lati = (float)readvalue[3]/1800000;
-                printf("Latitude = %f\n", lati);
-                longi = (float)readvalue[4]/1800000;
-                printf("Longitude = %f\n", longi);
-	//	c8y_payload = (char *)malloc( strlen("%d,%f,%f",c8ylocationtemplate, lati, longi) * sizeof(char))
-		char * c8y_payload = (char *)malloc(50 * sizeof(char));	
-		sprintf(c8y_payload, "%d,%f,%f",c8ylocationtemplate, lati, longi);
-		printf("payload is %s\n",c8y_payload);
+            printf("data read from file is %u\n", readvalue[0]);
+            printf("data read from file is %u\n", readvalue[1]);
+            printf("data read from file is %u\n", readvalue[2]);
 
-		//sending coordinates
-        publish(client, "s/us", c8y_payload);
+            lati = (float)readvalue[3]/1800000;
+            printf("Latitude = %f\n", lati);
+            longi = (float)readvalue[4]/1800000;
+            printf("Longitude = %f\n", longi);
 
+            char * c8y_payload = (char *)malloc(50 * sizeof(char));
+            sprintf(c8y_payload, "%d,%f,%f",c8ylocationtemplate, lati, longi);
+            printf("payload is %s\n",c8y_payload);
 
+            //sending coordinates
+            publish(client, "s/us", c8y_payload);
 
-                printf("Sending login response for location packet\n");
+            printf("Sending login response for location packet\n");
 
-            //strcpy(buff, login_response);
-	len = sizeof(login_response);	
-	send(sockfd, &len, 4, 0 );
-	send(sockfd, login_response, len, 0 );
-        //    send(sockfd , login_response, sizeof(login_response), 0 );
+            len = sizeof(login_response);
+            send(sockfd, &len, 4, 0 );
+            send(sockfd, login_response, len, 0 );
 
         }
 
-	else
-	{
-		printf("Error on receiving proper data from device, resending received data\n");
-	// Resending received data
-	send(sockfd, &len, 4, 0 );
-	send(sockfd, ibuff, len, 0 );
-	}
+        else
+        {
+            printf("Error on receiving proper data from device, resending received data\n");
+            // Resending received data
+            send(sockfd, &len, 4, 0 );
+            send(sockfd, ibuff, len, 0 );
+        }
 
-	//sleep (3);
     }
 }
 
 
 int main(int argc, char const *argv[])
 {
-    int sock = 0, valread;
+    int sock = 0;
     struct sockaddr_in serv_addr;
-    char *hello = "Hello from client";
-    char buffer[1024] = {0};
+
+
 #if 1
-   // MQTTClient client;
+    // MQTTClient client;
     MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-    conn_opts.username = "agtstech/agtstest";
-    conn_opts.password = "agtstest";
+
+    conn_opts.username = "t7214822/agtsdev";
+    conn_opts.password = "agts@123";
+
 
     MQTTClient_setCallbacks(client, NULL, NULL, on_message, NULL);
 #endif
@@ -194,8 +187,8 @@ int main(int argc, char const *argv[])
         printf("connected to the server..\n");
 
     //opening file storage
-            if ((fptr = fopen("/home/ajna/AGTS/enrichAI/code/GPSDeviceSimulator/GPSLocation.bin","wb+")) == NULL)
-               printf("Error! opening file");
+    if ((fptr = fopen("/home/ajna/AGTS/enrichAI/code/GPSDeviceSimulator/GPSLocation.bin","wb+")) == NULL)
+        printf("Error! opening file");
     printf("entering to for loop\n" );
     printf("entering to for loop\n" );
     printf("entering to for loop\n" );
@@ -204,7 +197,7 @@ int main(int argc, char const *argv[])
 
     //Adding as cumulocity agent
 
-        if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
+    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
         printf("Failed to connect, return code %d\n", rc);
         exit(-1);
     }
